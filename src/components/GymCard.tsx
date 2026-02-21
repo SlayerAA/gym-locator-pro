@@ -1,6 +1,7 @@
-import { Star, MapPin, Clock, Dumbbell } from "lucide-react";
+import { Star, MapPin, Clock, Navigation } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Gym, EQUIPMENT_LABELS, SPORT_LABELS } from "@/data/gyms";
+import { formatDistance } from "@/hooks/use-geolocation";
 
 interface GymCardProps {
   gym: Gym;
@@ -55,9 +56,17 @@ const GymCard = ({ gym, selected, onClick }: GymCardProps) => {
           </Badge>
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <MapPin className="w-3 h-3 shrink-0" />
-          <span className="truncate">{gym.address}</span>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="truncate">{gym.address}</span>
+          </div>
+          {gym.distance != null && (
+            <div className="flex items-center gap-1 shrink-0 ml-2 text-primary font-semibold">
+              <Navigation className="w-3 h-3" />
+              <span>{formatDistance(gym.distance)}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

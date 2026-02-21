@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
-import { MapPin, Search, Dumbbell } from "lucide-react";
+import { MapPin, Search, Dumbbell, Loader2, Navigation } from "lucide-react";
 import GymMap from "@/components/GymMap";
 import GymCard from "@/components/GymCard";
 import FilterPanel, { Filters } from "@/components/FilterPanel";
-import { MOCK_GYMS } from "@/data/gyms";
+import { MOCK_GYMS, Gym } from "@/data/gyms";
+import { useGeolocation, getDistanceKm, formatDistance } from "@/hooks/use-geolocation";
 
 const DEFAULT_FILTERS: Filters = {
   maxPrice: 100,
@@ -17,17 +18,27 @@ const Index = () => {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const userLocation = useGeolocation();
+
+  const gymsWithDistance = useMemo((): (Gym & { distance: number })[] => {
+    return MOCK_GYMS.map((gym) => ({
+      ...gym,
+      distance: getDistanceKm(userLocation.lat, userLocation.lng, gym.lat, gym.lng),
+    }));
+  }, [userLocation.lat, userLocation.lng]);
 
   const filteredGyms = useMemo(() => {
-    return MOCK_GYMS.filter((gym) => {
-      if (gym.pricePerMonth > filters.maxPrice) return false;
-      if (!filters.equipmentLevels.includes(gym.equipmentLevel)) return false;
-      if (!gym.sportTypes.some((s) => filters.sportTypes.includes(s))) return false;
-      if (gym.rating < filters.minRating) return false;
-      if (search && !gym.name.toLowerCase().includes(search.toLowerCase()) && !gym.address.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    });
-  }, [filters, search]);
+    return gymsWithDistance
+      .filter((gym) => {
+        if (gym.pricePerMonth > filters.maxPrice) return false;
+        if (!filters.equipmentLevels.includes(gym.equipmentLevel)) return false;
+        if (!gym.sportTypes.some((s) => filters.sportTypes.includes(s))) return false;
+        if (gym.rating < filters.minRating) return false;
+        if (search && !gym.name.toLowerCase().includes(search.toLowerCase()) && !gym.address.toLowerCase().includes(search.toLowerCase())) return false;
+        return true;
+      })
+      .sort((a, b) => a.distance - b.distance);
+  }, [gymsWithDistance, filters, search]);
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
@@ -53,8 +64,12 @@ const Index = () => {
           </div>
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <MapPin className="w-3.5 h-3.5 text-primary" />
-            <span>Paris, France</span>
+            {userLocation.loading ? (
+              <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+            ) : (
+              <Navigation className="w-3.5 h-3.5 text-primary" />
+            )}
+            <span>{userLocation.loading ? "Localisation..." : userLocation.error ? "Paris (par défaut)" : "Position détectée"}</span>
           </div>
         </div>
       </header>
@@ -103,6 +118,7 @@ const Index = () => {
             gyms={filteredGyms}
             selectedGymId={selectedGymId}
             onGymSelect={(id) => setSelectedGymId(id === selectedGymId ? null : id)}
+            userLocation={userLocation.loading ? undefined : { lat: userLocation.lat, lng: userLocation.lng }}
           />
         </main>
       </div>
