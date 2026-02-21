@@ -7,6 +7,7 @@ interface GymMapProps {
   gyms: Gym[];
   selectedGymId?: string | null;
   onGymSelect?: (id: string) => void;
+  userLocation?: { lat: number; lng: number };
 }
 
 const createMarkerIcon = (level: Gym["equipmentLevel"]) => {
@@ -25,10 +26,11 @@ const createMarkerIcon = (level: Gym["equipmentLevel"]) => {
   });
 };
 
-const GymMap = ({ gyms, selectedGymId, onGymSelect }: GymMapProps) => {
+const GymMap = ({ gyms, selectedGymId, onGymSelect, userLocation }: GymMapProps) => {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const userMarkerRef = useRef<L.Marker | null>(null);
 
   // Initialize map
   useEffect(() => {
@@ -93,6 +95,33 @@ const GymMap = ({ gyms, selectedGymId, onGymSelect }: GymMapProps) => {
       map.flyTo([gym.lat, gym.lng], 15, { duration: 0.8 });
     }
   }, [selectedGymId, gyms]);
+
+  // User location marker
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !userLocation) return;
+
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setLatLng([userLocation.lat, userLocation.lng]);
+    } else {
+      const userIcon = L.divIcon({
+        className: "",
+        html: `<div style="width:18px;height:18px;border-radius:50%;background:hsl(217,91%,60%);border:3px solid hsl(0,0%,95%);box-shadow:0 0 12px hsl(217,91%,60%,0.6);animation:pulse-glow 2s ease-in-out infinite"></div>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+      userMarkerRef.current = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon, zIndexOffset: 1000 })
+        .addTo(map)
+        .bindPopup('<div style="font-family:Inter,sans-serif;font-size:12px;font-weight:600">📍 Vous êtes ici</div>');
+    }
+  }, [userLocation]);
+
+  // Center map on user location initially
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !userLocation) return;
+    map.setView([userLocation.lat, userLocation.lng], 13);
+  }, [userLocation?.lat, userLocation?.lng]);
 
   return <div ref={containerRef} className="w-full h-full rounded-lg" />;
 };
